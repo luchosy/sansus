@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heritage in Demographics</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#050505; --white:#f0f0ee;
+  --dim:rgba(240,240,238,0.35); --faint:rgba(240,240,238,0.10);
+  --mono:'IBM Plex Mono',monospace; --serif:'Cormorant Garamond',serif;
+  --cell-w:110px; --cell-h:72px;
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--white);font-family:var(--mono);overflow:hidden;}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .6s ease;}
+.screen.active{opacity:1;pointer-events:all;}
+
+/* ─── Start screen ─── */
+#s-start{padding:0;}
+#start-grid-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.start-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:48px;width:739px;}
+.start-title{font-family:var(--mono);font-size:128px;font-weight:400;letter-spacing:0;text-transform:uppercase;color:var(--white);line-height:1;}
+.start-sub{font-family:var(--serif);font-size:32px;font-weight:400;font-style:italic;color:var(--white);text-align:center;line-height:1.5;}
+.start-btn{background:var(--white);border:2px solid var(--white);border-radius:24px;color:#050505;font-family:var(--mono);font-size:16px;padding:24px 40px;cursor:pointer;transition:background .2s;}
+.start-btn:hover{background:rgba(240,240,238,.88);}
+
+/* ─── Shared ─── */
+.divider{width:1px;height:36px;background:var(--faint);margin:0 auto 28px;}
+/* pill-outlined = default btn */
+.btn{background:transparent;border:2px solid var(--white);border-radius:24px;color:var(--white);font-family:var(--mono);font-size:14px;letter-spacing:0;text-transform:none;padding:18px 36px;cursor:pointer;transition:all .2s;}
+.btn:hover{background:rgba(240,240,238,.07);}
+/* pill-solid = primary action */
+.btn-primary{background:var(--white);border:2px solid var(--white);border-radius:24px;color:#050505;font-family:var(--mono);font-size:14px;padding:18px 36px;cursor:pointer;transition:all .2s;}
+.btn-primary:hover{background:rgba(240,240,238,.88);}
+.step-label{font-size:8px;letter-spacing:4px;color:var(--dim);text-transform:uppercase;margin-bottom:32px;}
+
+/* ─── Interstitial ─── */
+.interstitial-text{text-align:center;margin-bottom:56px;}
+.interstitial-line{font-family:var(--mono);font-size:clamp(13px,1.4vw,18px);font-weight:400;color:var(--white);line-height:1.9;opacity:0;transform:translateY(10px);transition:opacity 1s ease,transform 1s ease;}
+.interstitial-line.vis{opacity:1;transform:translateY(0);}
+
+/* ─── Country ─── */
+#s-country{gap:0;justify-content:center;}
+.country-step{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:16px;letter-spacing:2px;color:var(--white);text-transform:uppercase;white-space:nowrap;}
+.country-comparing{font-family:var(--mono);font-size:16px;color:#9c9c9c;margin-bottom:16px;}
+.fixed-countries{display:flex;gap:12px;margin-bottom:48px;flex-wrap:wrap;justify-content:center;}
+.fixed-chip{font-family:var(--mono);font-size:14px;letter-spacing:0;text-transform:uppercase;padding:12px 20px;border:1px solid #9c9c9c;border-radius:14px;color:#9c9c9c;line-height:1;}
+.fixed-chip.user-chip{border-style:dashed;transition:all .3s ease;}
+.fixed-chip.user-chip.filled{border-style:solid;border-color:var(--white);color:var(--white);}
+.country-q{font-family:var(--serif);font-size:36px;font-weight:600;font-style:normal;text-align:center;margin-bottom:20px;line-height:1.2;color:var(--white);}
+.search-wrap{position:relative;width:520px;margin-bottom:36px;}
+.search-input{width:100%;background:transparent;border:1px solid var(--white);border-radius:32px;color:var(--white);font-family:var(--mono);font-size:18px;padding:14px 24px;outline:none;transition:border-color .2s;}
+.search-input::placeholder{color:#9c9c9c;}
+.search-input:focus{border-color:var(--white);}
+.dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#111;border:1px solid rgba(240,240,238,.15);border-radius:16px;max-height:240px;overflow-y:auto;z-index:10;display:none;}
+.dropdown.open{display:block;}
+.dropdown::-webkit-scrollbar{width:3px;}
+.dropdown::-webkit-scrollbar-thumb{background:rgba(240,240,238,.15);}
+.d-item{padding:12px 24px;font-family:var(--mono);font-size:13px;cursor:pointer;color:rgba(240,240,238,.7);transition:all .15s;}
+.d-item:hover,.d-item.selected{background:rgba(240,240,238,.07);color:var(--white);}
+.country-btns{display:flex;gap:36px;width:520px;}
+.country-btn-back{flex:1;background:transparent;border:2px solid var(--white);border-radius:22px;color:var(--white);font-family:var(--mono);font-size:14px;padding:22px 24px;cursor:pointer;transition:all .2s;}
+.country-btn-back:hover{background:rgba(240,240,238,.07);}
+.country-btn-continue{flex:1;background:var(--white);border:2px solid var(--white);border-radius:22px;color:#050505;font-family:var(--mono);font-size:14px;padding:22px 24px;cursor:pointer;transition:all .2s;}
+.country-btn-continue:hover{background:rgba(240,240,238,.88);}
+.country-btn-continue:disabled{opacity:.35;pointer-events:none;}
+
+/* ─── Priority ─── */
+#s-priority{gap:0;justify-content:center;}
+.priority-step{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:16px;letter-spacing:2px;color:var(--white);text-transform:uppercase;white-space:nowrap;}
+.priority-q{font-family:var(--serif);font-size:36px;font-weight:600;font-style:normal;text-align:center;line-height:1.3;color:var(--white);}
+.priority-sub{font-family:var(--mono);font-size:16px;letter-spacing:2px;color:#9c9c9c;text-transform:uppercase;text-align:center;}
+.sort-list{list-style:none;width:728px;user-select:none;-webkit-user-select:none;display:flex;flex-direction:column;gap:17px;}
+.sort-item{display:flex;align-items:center;justify-content:space-between;padding:24px 32px;border:1px solid #d9d9d9;border-radius:4px;cursor:grab;transition:background .15s,border-color .15s;}
+.sort-item:active{cursor:grabbing;}
+.sort-item.dragging{opacity:.35;}
+.sort-item.drag-over{border-color:var(--white);background:rgba(240,240,238,.04);}
+.sort-rank{font-family:var(--mono);font-size:16px;font-weight:600;color:#d9d9d9;margin-right:8px;}
+.sort-text{font-family:var(--mono);font-size:16px;font-weight:600;text-transform:uppercase;color:#d9d9d9;flex:1;}
+.sort-handle{color:#d9d9d9;font-size:18px;letter-spacing:1px;flex-shrink:0;}
+.priority-btns{display:flex;gap:36px;width:728px;}
+.priority-btn-back{flex:1;background:transparent;border:2px solid var(--white);border-radius:24px;color:var(--white);font-family:var(--mono);font-size:16px;padding:24px;cursor:pointer;transition:all .2s;}
+.priority-btn-back:hover{background:rgba(240,240,238,.07);}
+.priority-btn-continue{flex:1;background:var(--white);border:2px solid var(--white);border-radius:24px;color:#050505;font-family:var(--mono);font-size:16px;padding:24px;cursor:pointer;transition:all .2s;}
+.priority-btn-continue:hover{background:rgba(240,240,238,.88);}
+.sort-handle{color:rgba(240,240,238,.25);font-size:11px;letter-spacing:2px;margin-left:auto;}
+
+/* ─── Camera ─── */
+#s-camera{gap:16px;}
+.cam-label{font-size:8px;letter-spacing:4px;color:var(--dim);text-transform:uppercase;}
+.cam-frame{position:relative;width:360px;height:270px;border:1px solid rgba(240,240,238,.13);overflow:hidden;background:#0d0d0d;}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
+.cam-corner{position:absolute;width:13px;height:13px;border-color:rgba(240,240,238,.38);border-style:solid;}
+.cam-corner.tl{top:8px;left:8px;border-width:1px 0 0 1px}
+.cam-corner.tr{top:8px;right:8px;border-width:1px 1px 0 0}
+.cam-corner.bl{bottom:8px;left:8px;border-width:0 0 1px 1px}
+.cam-corner.br{bottom:8px;right:8px;border-width:0 1px 1px 0}
+.cam-info{font-size:7px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;text-align:center;}
+.shutter{width:50px;height:50px;border-radius:50%;border:1px solid rgba(240,240,238,.28);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.shutter:hover{border-color:var(--white);background:rgba(240,240,238,.06);}
+.shutter-inner{width:34px;height:34px;border-radius:50%;background:rgba(240,240,238,.82);transition:all .2s;}
+.shutter:hover .shutter-inner{background:var(--white);}
+.cam-error{font-size:8px;letter-spacing:2px;color:rgba(240,180,180,.7);text-align:center;max-width:320px;line-height:2;display:none;}
+
+/* ─── Grid Screen ─── */
+#s-grid{justify-content:flex-start;padding-top:48px;overflow:hidden;}
+.grid-header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:16px 26px;font-size:7px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;pointer-events:none;z-index:50;background:linear-gradient(to bottom,var(--bg) 60%,transparent);}
+
+.reveal-text{text-align:center;margin-bottom:14px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transition:all .5s ease;}
+.reveal-text.hidden{min-height:0;height:0;margin:0;overflow:hidden;opacity:0;}
+.r1,.r2{font-family:var(--serif);font-weight:300;font-size:clamp(13px,1.7vw,21px);line-height:1.6;color:var(--white);opacity:0;transform:translateY(8px);transition:opacity 1s ease,transform 1s ease;}
+.r1.vis,.r2.vis{opacity:1;transform:translateY(0);}
+.r2{font-style:italic;color:rgba(240,240,238,.8);}
+
+/* Legend */
+.grid-legend{display:flex;gap:20px;margin-top:12px;justify-content:center;opacity:0;transition:opacity .8s ease;}
+.grid-legend.vis{opacity:1;}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:7px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.legend-swatch{width:14px;height:14px;border:1px solid rgba(240,240,238,.12);}
+.legend-swatch.swatch-clear{background:rgba(240,240,238,.04);}
+.legend-swatch.swatch-redacted{background:rgba(4,4,4,.85);backdrop-filter:blur(4px);}
+
+/* ─── Grid layout ─── */
+.grid-area{position:relative;display:flex;align-items:flex-start;justify-content:center;}
+.y-axis{display:flex;flex-direction:column;flex-shrink:0;position:absolute;right:calc(50% + 275px + 10px);top:0;margin:0;}
+/* In scrollable (expanded) mode, y-axis flows inline again */
+.grid-area.scrollable .y-axis{position:static;margin-right:10px;}
+.y-spacer{height:24px;}
+.y-label{display:flex;align-items:center;justify-content:flex-end;font-size:7px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;padding-right:12px;text-align:right;max-width:180px;line-height:1.4;width:180px;flex-shrink:0;overflow:hidden;}
+.y-label.nc-label{height:var(--cell-h);color:rgba(240,240,238,.65);}
+
+/* Expanded y-axis: two-column group layout */
+.y-group{display:flex;flex-direction:row;align-items:stretch;border-top:1px solid rgba(240,240,238,.18);}
+.y-nc-name{width:150px;display:flex;align-items:center;padding-right:16px;font-size:12px;font-weight:600;color:rgba(240,240,238,.88);line-height:1.3;word-break:break-word;flex-shrink:0;}
+.y-sc-col{display:flex;flex-direction:column;width:220px;flex-shrink:0;}
+.y-sc-item{display:flex;align-items:center;justify-content:flex-end;text-align:right;padding-right:14px;font-size:8px;font-weight:400;color:rgba(240,240,238,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+
+.grid-wrap{display:flex;flex-direction:column;}
+.x-axis{display:flex;height:24px;}
+.x-label{width:var(--cell-w);font-size:7px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;text-align:center;line-height:1.4;}
+.x-label.user-country{color:rgba(240,240,238,.75);}
+
+/* Grid itself */
+.grid{position:relative;display:grid;grid-template-columns:repeat(5,var(--cell-w));border:1px solid rgba(240,240,238,.1);overflow:hidden;}
+.grid.collapsed{grid-template-rows:repeat(6,var(--cell-h));}
+#grid-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none;}
+#grid-placeholder{position:absolute;inset:0;background:linear-gradient(135deg,#111 0%,#0a0a0a 100%);z-index:0;}
+
+.cell{position:relative;z-index:1;border-right:1px solid rgba(240,240,238,.08);border-bottom:1px solid rgba(240,240,238,.08);opacity:0;transition:opacity .35s ease;}
+.cell.vis{opacity:1;}
+.cell.clear{background:transparent;}
+.cell.redacted{background:rgba(4,4,4,.62);backdrop-filter:blur(22px) brightness(.12) saturate(0);-webkit-backdrop-filter:blur(22px) brightness(.12) saturate(0);}
+
+/* Expanded sub-cells */
+.cell.sub{border-color:rgba(240,240,238,.09);}
+.cell.sub.clear{background:rgba(240,240,238,.012);}
+.cell.sub.redacted{background:rgba(4,4,4,.72);backdrop-filter:blur(18px) brightness(.15) saturate(0);}
+/* First SC in each NC group gets a top border to visually separate */
+.cell.sub.group-start{border-top:1px solid rgba(240,240,238,.22);}
+
+.grid-area.scrollable{overflow:auto;max-height:calc(100vh - 175px);align-items:flex-start;justify-content:flex-start;}
+.grid-area.scrollable::-webkit-scrollbar{width:3px;}
+.grid-area.scrollable::-webkit-scrollbar-thumb{background:rgba(240,240,238,.12);}
+.x-axis.sticky{position:sticky;top:0;z-index:10;background:var(--bg);}
+
+/* ─── CTAs ─── */
+.grid-actions{display:flex;gap:16px;margin-top:36px;justify-content:center;align-items:center;opacity:0;transition:opacity .8s ease;}
+.grid-actions.vis{opacity:1;}
+
+.restart-hint{font-family:var(--mono);font-size:13px;color:rgba(240,240,238,.4);cursor:pointer;white-space:nowrap;background:transparent;border:1px solid rgba(240,240,238,.25);border-radius:24px;padding:18px 28px;transition:all .2s;}
+.restart-hint:hover{border-color:rgba(240,240,238,.6);color:rgba(240,240,238,.8);}
+
+/* ─── Collective Screen ─── */
+#s-collective{justify-content:flex-start;padding-top:0;overflow:hidden;}
+.collective-header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:16px 26px;font-size:7px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;pointer-events:none;z-index:50;background:linear-gradient(to bottom,var(--bg) 60%,transparent);}
+.collective-back-btn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:50;pointer-events:all;}
+.collective-tiles{display:flex;flex-wrap:wrap;gap:0;width:100%;height:100%;overflow-y:auto;align-content:flex-start;justify-content:flex-start;}
+.collective-tiles::-webkit-scrollbar{display:none;}
+.collective-tile{display:block;line-height:0;position:relative;}
+.collective-tile canvas{display:block;}
+.collective-tile.is-you canvas{box-shadow:inset 0 0 0 1px rgba(240,240,238,.7);}
+
+#cap-canvas{display:none;}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div class="screen active" id="s-start">
+  <canvas id="start-grid-canvas"></canvas>
+  <div class="start-content">
+    <div class="start-title">SANS-US</div>
+    <div class="start-sub">The census doesn't describe society,<br>It decides what society is allowed to be.</div>
+    <button class="start-btn" id="begin-btn">Begin Experience</button>
+  </div>
+</div>
+
+<!-- INTERSTITIAL -->
+<div class="screen" id="s-intro2">
+  <div class="interstitial-text">
+    <div class="interstitial-line" id="il1">A census is designed to understand a population.</div>
+    <div class="interstitial-line" id="il2">But what is often needed is omitted.</div>
+    <div class="interstitial-line" id="il3">How much of us do they really see?</div>
+  </div>
+  <button class="btn-primary" id="intro2-continue-btn" style="opacity:0;pointer-events:none;">Continue</button>
+</div>
+
+<!-- COUNTRY -->
+<div class="screen" id="s-country">
+  <div class="country-step">Step 1 of 3</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:56px;width:520px;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;">
+      <div class="country-comparing">You are comparing between</div>
+      <div class="fixed-countries">
+        <div class="fixed-chip">USA</div>
+        <div class="fixed-chip">India</div>
+        <div class="fixed-chip">China</div>
+        <div class="fixed-chip">Italy</div>
+        <div class="fixed-chip user-chip" id="user-chip">Your Choice</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:36px;width:100%;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:20px;width:100%;">
+        <div class="country-q">Choose a country</div>
+        <div class="search-wrap" style="margin-bottom:0;width:100%;">
+          <input class="search-input" id="country-search" type="text" placeholder="Select a country..." autocomplete="off">
+          <div class="dropdown" id="country-dropdown"></div>
+        </div>
+      </div>
+      <div class="country-btns" style="width:100%;">
+        <button class="country-btn-back" onclick="show('s-intro2')">Back</button>
+        <button class="country-btn-continue" id="country-next-btn" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRIORITY -->
+<div class="screen" id="s-priority">
+  <div class="priority-step">Step 2 of 3</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:48px;width:728px;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:24px;width:100%;">
+      <div class="priority-q">Rearrange the metrics according to your preference</div>
+      <div class="priority-sub">Drag to reorder</div>
+    </div>
+    <ul class="sort-list" id="sort-list"></ul>
+    <div class="priority-btns">
+      <button class="priority-btn-back" onclick="show('s-country')">Back</button>
+      <button class="priority-btn-continue" id="priority-next-btn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- CAMERA -->
+<div class="screen" id="s-camera">
+  <div class="step-label">Step 3 of 3</div>
+  <div class="cam-label">Position yourself in frame</div>
+  <div class="cam-frame">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+    <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+  </div>
+  <div class="cam-info" id="cam-info">No data is stored &nbsp;·&nbsp; Anonymous collection</div>
+  <button class="shutter" id="shutter-btn"><div class="shutter-inner"></div></button>
+  <div class="cam-error" id="cam-error">
+    Camera access denied.<br><br>
+    <button class="btn" style="font-size:8px;" id="skip-btn">Skip camera — continue anyway</button>
+  </div>
+</div>
+
+<!-- GRID -->
+<div class="screen" id="s-grid">
+  <div class="grid-header">
+    <span>Heritage in Demographics &nbsp;/&nbsp; Group 5</span>
+    <span id="grid-status"></span>
+  </div>
+
+  <div class="reveal-text" id="reveal-text">
+    <div class="r1" id="r1">The census didn't miss these parts of you.</div>
+    <div class="r2" id="r2">It decided they didn't need to exist.</div>
+  </div>
+
+  <div class="grid-area" id="grid-area">
+    <div class="y-axis" id="y-axis"><div class="y-spacer"></div></div>
+    <div class="grid-wrap">
+      <div class="x-axis" id="x-axis"></div>
+      <div class="grid collapsed" id="grid">
+        <img id="grid-img" alt="">
+        <div id="grid-placeholder"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-legend" id="grid-legend">
+    <div class="legend-item"><div class="legend-swatch swatch-clear"></div>Asked in census</div>
+    <div class="legend-item"><div class="legend-swatch swatch-redacted"></div>Not asked — you don't exist here</div>
+  </div>
+
+  <div class="grid-actions" id="grid-actions">
+    <button class="btn" id="dive-btn">Dive Deeper</button>
+    <button class="btn-primary" id="collective-btn" onclick="viewCollective()">View the Collective</button>
+    <button class="restart-hint" id="restart-hint" onclick="restart()">↩ Reset</button>
+  </div>
+</div>
+
+<!-- COLLECTIVE -->
+<div class="screen" id="s-collective">
+  <div class="collective-header">
+    <span>Heritage in Demographics &nbsp;/&nbsp; The Collective</span>
+    <span id="collective-count"></span>
+  </div>
+  <div class="collective-tiles" id="collective-tiles"></div>
+  <div class="collective-back-btn">
+    <button class="btn" onclick="backFromCollective()">← Back to your grid</button>
+
+  </div>
+</div>
+
+<canvas id="cap-canvas"></canvas>
+
+<script>
+// ════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════
+
+const CATEGORIES=["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"];
+
+const CAT_SUBDIMENSIONS={"Dwelling & Material Conditions":["Accessibility","Assets & Material Wealth","Building Characteristics","Household Composition","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Health & Disability":["Disability Status","Fertility & Birth History","Functional Difficulty / Disability","General Health Status","Health Condition","Sanitation & Hygiene"],"Identity & Cultural Classification":["Age","Caste / Social Stratification","Demographic Identity","Ethnic / Tribal Identity","Linguistic Identity","Racial Classification","Religious Identity","Sex / Gender Classification"],"Kinship & Reproduction":["Basic Demographic Identification","Fertility & Birth History","Household Composition","Intergenerational Structure","Marital / Union Status","Relationship Structure","Vital Events in Household"],"Socioeconomic Activity":["Assets & Material Wealth","Digital Access","Duration & Temporal Residence","Education Level","Employment Relation / Class of Worker","Employment Status","Financial Access","General Health Status","Income Level","Industry","Industry / Sector","Infrastructure & Utilities","Job-Seeking Behavior","Literacy","Mobility Patterns","Occupation","Relationship Structure","School Attendance"],"State & Mobility":["Administrative Registration","Basic Demographic Identification","Duration & Temporal Residence","Employment Status","Enumeration / Presence Logic","General Health Status","Intergenerational Structure","Legal / Administrative Identification","Legal Status","Marital / Union Status","Migration History","Mobility Patterns","Reason for Movement","Relationship Structure","School Attendance"]};
+
+const COUNTRY_CATEGORIES={"United States":["Dwelling & Material Conditions","Identity & Cultural Classification","Kinship & Reproduction","State & Mobility"],"India":["Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"China":["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Italy":["Dwelling & Material Conditions","Health & Disability","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Nigeria":["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Brazil":["Dwelling & Material Conditions","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Bangladesh":["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Russia":["Dwelling & Material Conditions","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Pakistan":["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Mexico":["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"],"Indonesia":["Dwelling & Material Conditions","Health & Disability","Identity & Cultural Classification","Kinship & Reproduction","Socioeconomic Activity","State & Mobility"]};
+
+const COUNTRY_SUBDIMENSIONS={"United States":{"Dwelling & Material Conditions":["Housing Type","Tenure & Ownership"],"State & Mobility":["Basic Demographic Identification","Enumeration / Presence Logic","Legal / Administrative Identification"],"Identity & Cultural Classification":["Racial Classification"],"Kinship & Reproduction":["Basic Demographic Identification","Intergenerational Structure","Relationship Structure"]},"India":{"State & Mobility":["Basic Demographic Identification","Duration & Temporal Residence","Legal / Administrative Identification","Marital / Union Status","Migration History","Mobility Patterns","Reason for Movement"],"Kinship & Reproduction":["Fertility & Birth History","Marital / Union Status","Relationship Structure"],"Identity & Cultural Classification":["Caste / Social Stratification","Linguistic Identity","Religious Identity"],"Health & Disability":["Disability Status"],"Socioeconomic Activity":["Education Level","Employment Relation / Class of Worker","Employment Status","Industry / Sector","Literacy","Occupation","School Attendance"]},"China":{"Kinship & Reproduction":["Basic Demographic Identification","Fertility & Birth History","Household Composition","Intergenerational Structure","Marital / Union Status","Relationship Structure","Vital Events in Household"],"State & Mobility":["Administrative Registration","Basic Demographic Identification","Duration & Temporal Residence","Employment Status","Enumeration / Presence Logic","General Health Status","Intergenerational Structure","Legal / Administrative Identification","Legal Status","Marital / Union Status","Migration History","Mobility Patterns","Reason for Movement","Relationship Structure"],"Dwelling & Material Conditions":["Accessibility","Assets & Material Wealth","Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Identity & Cultural Classification":["Ethnic / Tribal Identity"],"Socioeconomic Activity":["Education Level","Employment Status","General Health Status","Industry / Sector","Infrastructure & Utilities","Literacy","Occupation","School Attendance"],"Health & Disability":["General Health Status"]},"Italy":{"Dwelling & Material Conditions":["Accessibility","Assets & Material Wealth","Building Characteristics","Household Composition","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Kinship & Reproduction":["Household Composition","Intergenerational Structure","Marital / Union Status","Relationship Structure"],"State & Mobility":["Basic Demographic Identification","Duration & Temporal Residence","Enumeration / Presence Logic","Legal Status","Marital / Union Status","Migration History","Mobility Patterns","Relationship Structure","School Attendance"],"Health & Disability":["General Health Status"],"Socioeconomic Activity":["Assets & Material Wealth","Duration & Temporal Residence","Education Level","Employment Status","Industry / Sector","Infrastructure & Utilities","Job-Seeking Behavior","Mobility Patterns","Occupation","Relationship Structure","School Attendance"]},"Nigeria":{"State & Mobility":["Administrative Registration","Duration & Temporal Residence","Enumeration / Presence Logic","Legal / Administrative Identification","Legal Status","Migration History","Reason for Movement"],"Kinship & Reproduction":["Fertility & Birth History","Household Composition","Intergenerational Structure","Marital / Union Status","Relationship Structure"],"Dwelling & Material Conditions":["Assets & Material Wealth","Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Identity & Cultural Classification":["Age","Linguistic Identity","Sex / Gender Classification"],"Socioeconomic Activity":["Assets & Material Wealth","Digital Access","Education Level","Employment Status","Industry / Sector","Job-Seeking Behavior","Literacy","Occupation","School Attendance"],"Health & Disability":["Fertility & Birth History","Functional Difficulty / Disability","Health Condition"]},"Brazil":{"Dwelling & Material Conditions":["Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Kinship & Reproduction":["Fertility & Birth History","Household Composition","Marital / Union Status","Relationship Structure"],"Identity & Cultural Classification":["Demographic Identity","Linguistic Identity","Racial Classification","Religious Identity"],"Socioeconomic Activity":["Education Level","Employment Status","Income Level","Industry","Literacy","Occupation","School Attendance"],"State & Mobility":["Duration & Temporal Residence","Legal Status","Migration History","Mobility Patterns"]},"Bangladesh":{"State & Mobility":["Administrative Registration","Enumeration / Presence Logic","Legal Status","Migration History","Mobility Patterns"],"Dwelling & Material Conditions":["Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Kinship & Reproduction":["Household Composition","Marital / Union Status","Relationship Structure"],"Health & Disability":["Disability Status","Sanitation & Hygiene"],"Identity & Cultural Classification":["Demographic Identity","Ethnic / Tribal Identity","Religious Identity"],"Socioeconomic Activity":["Digital Access","Education Level","Employment Status","Financial Access","Income Level","Industry / Sector","Literacy","School Attendance"]},"Russia":{"Dwelling & Material Conditions":["Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Kinship & Reproduction":["Fertility & Birth History","Household Composition","Marital / Union Status","Relationship Structure"],"Identity & Cultural Classification":["Demographic Identity","Ethnic / Tribal Identity","Linguistic Identity"],"State & Mobility":["Duration & Temporal Residence","Legal Status","Migration History","Mobility Patterns","Reason for Movement"],"Socioeconomic Activity":["Education Level","Employment Status","Income Level","Industry","Literacy","Occupation","School Attendance"]},"Pakistan":{"Dwelling & Material Conditions":["Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Kinship & Reproduction":["Household Composition","Marital / Union Status","Relationship Structure"],"Identity & Cultural Classification":["Demographic Identity","Religious Identity"],"Socioeconomic Activity":["Education Level","Employment Status","Industry","Literacy","Occupation","School Attendance"],"State & Mobility":["Duration & Temporal Residence","Migration History","Reason for Movement"],"Health & Disability":["Disability Status"]},"Mexico":{"Dwelling & Material Conditions":["Building Characteristics","Housing Type","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Kinship & Reproduction":["Fertility & Birth History","Household Composition","Marital / Union Status","Relationship Structure"],"Identity & Cultural Classification":["Demographic Identity","Ethnic / Tribal Identity","Linguistic Identity"],"Socioeconomic Activity":["Education Level","Employment Status","Industry","Literacy","Occupation","School Attendance"],"State & Mobility":["Duration & Temporal Residence","Migration History"],"Health & Disability":["Disability Status"]},"Indonesia":{"State & Mobility":["Duration & Temporal Residence","Enumeration / Presence Logic","Legal Status","Migration History"],"Kinship & Reproduction":["Household Composition","Marital / Union Status","Relationship Structure"],"Dwelling & Material Conditions":["Assets & Material Wealth","Building Characteristics","Infrastructure & Utilities","Spatial Scale","Tenure & Ownership"],"Identity & Cultural Classification":["Demographic Identity","Religious Identity"],"Socioeconomic Activity":["Education Level","Employment Status","Income Level","Industry","Literacy","Occupation","School Attendance"],"Health & Disability":["Disability Status"]}};
+
+const FIXED=["United States","India","China","Italy"];
+const FIXED_DISPLAY=["USA","India","China","Italy"];
+const SELECTABLE=Object.keys(COUNTRY_CATEGORIES).filter(c=>!FIXED.includes(c)).sort();
+
+// Total SC count for layout math
+const TOTAL_SC=categoryOrder=>categoryOrder.reduce((sum,ci)=>(sum+(CAT_SUBDIMENSIONS[CATEGORIES[ci]]||[]).length),0);
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let selectedCountry=null, categoryOrder=[0,1,2,3,4,5], capturedUrl=null, mediaStream=null, isExpanded=false, cameraAccessDenied=false;
+
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function hasCat(c,cat){return(COUNTRY_CATEGORIES[c]||[]).includes(cat);}
+function hasSub(c,cat,sub){return((COUNTRY_SUBDIMENSIONS[c]||{})[cat]||[]).includes(sub);}
+
+// ════════════════════════════════════════
+// STEP 1 — COUNTRY
+// ════════════════════════════════════════
+const searchInput=document.getElementById('country-search'),dropdown=document.getElementById('country-dropdown'),nextBtn=document.getElementById('country-next-btn');
+function renderDropdown(f){const q=(f||'').toLowerCase().trim();const list=q?SELECTABLE.filter(c=>c.toLowerCase().includes(q)):SELECTABLE;dropdown.innerHTML='';if(!list.length){dropdown.classList.remove('open');return;}list.forEach(c=>{const el=document.createElement('div');el.className='d-item'+(c===selectedCountry?' selected':'');el.textContent=c;el.addEventListener('mousedown',e=>{e.preventDefault();selectCountry(c);});dropdown.appendChild(el);});dropdown.classList.add('open');}
+function selectCountry(c){selectedCountry=c;searchInput.value=c;dropdown.classList.remove('open');nextBtn.disabled=false;const chip=document.getElementById('user-chip');chip.textContent=c.length>14?c.split(' ')[0]:c;chip.classList.add('filled');}
+searchInput.addEventListener('input',()=>{selectedCountry=null;nextBtn.disabled=true;document.getElementById('user-chip').textContent='Your Choice';document.getElementById('user-chip').classList.remove('filled');renderDropdown(searchInput.value);});
+searchInput.addEventListener('focus',()=>renderDropdown(searchInput.value));
+searchInput.addEventListener('blur',()=>setTimeout(()=>dropdown.classList.remove('open'),150));
+(function drawStartGrid(){
+  const canvas=document.getElementById('start-grid-canvas');
+  const ctx=canvas.getContext('2d');
+  function draw(){
+    canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+    const gap=64;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle='rgba(240,240,238,0.08)';
+    ctx.lineWidth=1;
+    for(let x=0;x<=canvas.width;x+=gap){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+    for(let y=0;y<=canvas.height;y+=gap){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+  }
+  draw();
+  window.addEventListener('resize',draw);
+})();
+
+document.getElementById('begin-btn').addEventListener('click',()=>{
+  show('s-intro2');
+  const lines=['il1','il2','il3'];
+  lines.forEach((id,i)=>setTimeout(()=>document.getElementById(id).classList.add('vis'),400+i*700));
+  const continueBtn=document.getElementById('intro2-continue-btn');
+  setTimeout(()=>{continueBtn.style.opacity='1';continueBtn.style.pointerEvents='all';},400+3*700+400);
+});
+document.getElementById('intro2-continue-btn').addEventListener('click',()=>{
+  ['il1','il2','il3'].forEach(id=>document.getElementById(id).classList.remove('vis'));
+  show('s-country');
+});
+document.getElementById('country-next-btn').addEventListener('click',()=>{if(!selectedCountry)return;buildSortList();show('s-priority');});
+
+// ════════════════════════════════════════
+// STEP 2 — REORDER
+// ════════════════════════════════════════
+function buildSortList(){const list=document.getElementById('sort-list');list.innerHTML='';CATEGORIES.forEach((cat,idx)=>{const li=document.createElement('li');li.className='sort-item';li.draggable=true;li.dataset.idx=idx;li.innerHTML=`<span class="sort-rank">${idx+1}.</span><span class="sort-text">${cat}</span><span class="sort-handle">⠿</span>`;list.appendChild(li);});initDragSort(list);}
+function updateRanks(list){list.querySelectorAll('.sort-item').forEach((el,i)=>el.querySelector('.sort-rank').textContent=(i+1)+'.');}
+function initDragSort(list){let dragEl=null;list.addEventListener('dragstart',e=>{dragEl=e.target.closest('.sort-item');if(dragEl){dragEl.classList.add('dragging');e.dataTransfer.effectAllowed='move';}});list.addEventListener('dragend',()=>{if(dragEl)dragEl.classList.remove('dragging');list.querySelectorAll('.sort-item').forEach(el=>el.classList.remove('drag-over'));updateRanks(list);dragEl=null;});list.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';const target=e.target.closest('.sort-item');if(!target||target===dragEl)return;list.querySelectorAll('.sort-item').forEach(el=>el.classList.remove('drag-over'));target.classList.add('drag-over');const items=Array.from(list.children);if(items.indexOf(dragEl)<items.indexOf(target))target.after(dragEl);else target.before(dragEl);});let touchItem=null;list.addEventListener('touchstart',e=>{touchItem=e.target.closest('.sort-item');if(touchItem)touchItem.classList.add('dragging');},{passive:true});list.addEventListener('touchmove',e=>{if(!touchItem)return;e.preventDefault();const y=e.touches[0].clientY;const items=Array.from(list.children);for(const item of items){if(item===touchItem)continue;const rect=item.getBoundingClientRect();const mid=rect.top+rect.height/2;if(y<mid&&items.indexOf(touchItem)>items.indexOf(item)){item.before(touchItem);break;}if(y>mid&&items.indexOf(touchItem)<items.indexOf(item)){item.after(touchItem);break;}}},{passive:false});list.addEventListener('touchend',()=>{if(touchItem)touchItem.classList.remove('dragging');updateRanks(list);touchItem=null;});}
+document.getElementById('priority-next-btn').addEventListener('click',()=>{categoryOrder=Array.from(document.querySelectorAll('#sort-list .sort-item')).map(el=>parseInt(el.dataset.idx));show('s-camera');startCamera();});
+
+
+// ════════════════════════════════════════
+// STEP 3 — CAMERA
+// ════════════════════════════════════════
+async function startCamera(){try{mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});document.getElementById('video').srcObject=mediaStream;await document.getElementById('video').play();document.getElementById('shutter-btn').style.display='flex';document.getElementById('cam-error').style.display='none';document.getElementById('cam-info').style.display='block';}catch(err){console.warn('Camera:',err.name);cameraAccessDenied=true;document.getElementById('shutter-btn').style.display='none';document.getElementById('cam-error').style.display='block';document.getElementById('cam-info').style.display='none';}}
+function capture(){const v=document.getElementById('video'),c=document.getElementById('cap-canvas');c.width=v.videoWidth||640;c.height=v.videoHeight||480;const ctx=c.getContext('2d');ctx.save();ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,0,0);ctx.restore();capturedUrl=c.toDataURL('image/jpeg',.88);if(mediaStream)mediaStream.getTracks().forEach(t=>t.stop());buildAndAnimate();}
+document.getElementById('shutter-btn').addEventListener('click',capture);
+document.getElementById('skip-btn').addEventListener('click',()=>{capturedUrl=null;if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}buildAndAnimate();});
+
+// ════════════════════════════════════════
+// MESH GRADIENT — camera denied fallback + tile backgrounds
+// ════════════════════════════════════════
+const MESH_BLOB_SETS=[
+  [{x:.15,y:.25,r:.55,col:[18,22,42]},{x:.85,y:.15,r:.50,col:[24,16,40]},{x:.50,y:.65,r:.60,col:[12,32,34]},{x:.10,y:.85,r:.45,col:[28,20,48]},{x:.90,y:.75,r:.50,col:[16,36,26]},{x:.55,y:.30,r:.40,col:[20,18,38]}],
+  [{x:.80,y:.20,r:.52,col:[22,14,38]},{x:.20,y:.70,r:.55,col:[10,28,40]},{x:.60,y:.40,r:.50,col:[30,18,44]},{x:.40,y:.85,r:.48,col:[14,34,22]},{x:.90,y:.60,r:.45,col:[20,24,36]},{x:.30,y:.15,r:.42,col:[18,30,30]}],
+  [{x:.50,y:.30,r:.58,col:[16,26,44]},{x:.15,y:.65,r:.50,col:[26,14,36]},{x:.85,y:.80,r:.52,col:[12,36,28]},{x:.70,y:.10,r:.46,col:[32,20,40]},{x:.35,y:.90,r:.50,col:[18,28,34]},{x:.60,y:.55,r:.44,col:[22,18,42]}],
+  [{x:.25,y:.40,r:.54,col:[20,20,46]},{x:.75,y:.30,r:.50,col:[14,32,32]},{x:.50,y:.80,r:.56,col:[28,16,38]},{x:.10,y:.15,r:.44,col:[16,36,24]},{x:.90,y:.55,r:.48,col:[24,22,40]},{x:.45,y:.60,r:.46,col:[12,28,44]}],
+];
+
+function drawMeshGradient(ctx,w,h,seed){
+  const blobs=MESH_BLOB_SETS[(seed||0)%MESH_BLOB_SETS.length];
+  ctx.fillStyle='#060608';
+  ctx.fillRect(0,0,w,h);
+  blobs.forEach(b=>{
+    const cx=b.x*w,cy=b.y*h,r=b.r*Math.max(w,h);
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0,`rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.88)`);
+    g.addColorStop(1,`rgba(${b.col[0]},${b.col[1]},${b.col[2]},0)`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,w,h);
+  });
+}
+
+function generateMeshGradient(w,h){
+  const c=document.createElement('canvas');
+  c.width=w;c.height=h;
+  drawMeshGradient(c.getContext('2d'),w,h,0);
+  return c.toDataURL('image/jpeg',.92);
+}
+
+// ════════════════════════════════════════
+// GRID — COLLAPSED (NC level)
+// ════════════════════════════════════════
+function buildAndAnimate(){isExpanded=false;buildCollapsedGrid();show('s-grid');setTimeout(animateCells,500);}
+
+function buildCollapsedGrid(){
+  const countries=[...FIXED,selectedCountry];
+  const displayNames=[...FIXED_DISPLAY,selectedCountry.length>12?selectedCountry.split(' ')[0]:selectedCountry];
+  document.getElementById('grid-status').textContent=(selectedCountry||'').toUpperCase();
+
+  // Show reveal text
+  document.getElementById('reveal-text').classList.remove('hidden');
+
+  // X-axis
+  const xAxis=document.getElementById('x-axis');
+  xAxis.innerHTML='';
+  displayNames.forEach((name,i)=>{const el=document.createElement('div');el.className='x-label'+(i===4?' user-country':'');el.textContent=name;el.title=countries[i];xAxis.appendChild(el);});
+
+  // Y-axis
+  const yAxis=document.getElementById('y-axis');
+  yAxis.innerHTML='<div class="y-spacer"></div>';
+  categoryOrder.forEach(catIdx=>{const el=document.createElement('div');el.className='y-label nc-label';el.textContent=CATEGORIES[catIdx];yAxis.appendChild(el);});
+
+  // Grid
+  const grid=document.getElementById('grid');
+  grid.className='grid collapsed';
+  grid.style.gridTemplateRows='';
+  Array.from(grid.querySelectorAll('.cell')).forEach(el=>el.remove());
+
+  const gridImg=document.getElementById('grid-img');
+  const placeholder=document.getElementById('grid-placeholder');
+  if(capturedUrl){gridImg.src=capturedUrl;gridImg.style.display='block';placeholder.style.display='none';}
+  else if(cameraAccessDenied){gridImg.src=generateMeshGradient(550,432);gridImg.style.display='block';placeholder.style.display='none';}
+  else{gridImg.style.display='none';placeholder.style.display='block';}
+
+  categoryOrder.forEach((catIdx,rowPos)=>{
+    const cat=CATEGORIES[catIdx];
+    countries.forEach((c,colIdx)=>{
+      const cell=document.createElement('div');
+      cell.className='cell '+(hasCat(c,cat)?'clear':'redacted');
+      cell.style.transitionDelay=(rowPos*140+colIdx*50)+'ms';
+      grid.appendChild(cell);
+    });
+  });
+
+  const diveBtn=document.getElementById('dive-btn');
+  diveBtn.textContent='Dive Deeper →';
+  diveBtn.onclick=expandGrid;
+}
+
+function animateCells(){
+  document.querySelectorAll('.cell').forEach(cell=>{
+    const d=parseFloat(cell.style.transitionDelay)||0;
+    setTimeout(()=>cell.classList.add('vis'),d);
+  });
+  const maxD=5*140+4*50+400;
+  setTimeout(()=>document.getElementById('grid-legend').classList.add('vis'),maxD);
+  setTimeout(()=>document.getElementById('grid-actions').classList.add('vis'),maxD+600);
+  setTimeout(triggerReveal,maxD+1800);
+}
+
+function triggerReveal(){
+  document.getElementById('r1').classList.add('vis');
+  setTimeout(()=>document.getElementById('r2').classList.add('vis'),1600);
+}
+
+// ════════════════════════════════════════
+// GRID — EXPANDED (SC level, fit viewport)
+// ════════════════════════════════════════
+function expandGrid(){
+  if(isExpanded)return;
+  isExpanded=true;
+
+  const countries=[...FIXED,selectedCountry];
+  const grid=document.getElementById('grid');
+
+  // Hide reveal text to reclaim vertical space
+  document.getElementById('reveal-text').classList.add('hidden');
+
+  const scH=22;
+  const totalSC=TOTAL_SC(categoryOrder);
+
+  // Remove collapsed, set dynamic rows
+  grid.classList.remove('collapsed');
+  grid.style.gridTemplateRows='repeat('+totalSC+','+scH+'px)';
+  Array.from(grid.querySelectorAll('.cell')).forEach(el=>el.remove());
+
+  // Rebuild y-axis
+  const yAxis=document.getElementById('y-axis');
+  yAxis.innerHTML='<div class="y-spacer"></div>';
+
+  let cellDelay=0;
+  categoryOrder.forEach((catIdx,groupIdx)=>{
+    const cat=CATEGORIES[catIdx];
+    const subs=CAT_SUBDIMENSIONS[cat]||[];
+
+    // Group wrapper: NC name on left, SC items column on right
+    const group=document.createElement('div');
+    group.className='y-group';
+    if(groupIdx===0) group.style.borderTop='none';
+
+    const ncName=document.createElement('div');
+    ncName.className='y-nc-name';
+    ncName.textContent=cat;
+    group.appendChild(ncName);
+
+    const scCol=document.createElement('div');
+    scCol.className='y-sc-col';
+    group.appendChild(scCol);
+
+    yAxis.appendChild(group);
+
+    subs.forEach((sub,si)=>{
+      // SC label
+      const scItem=document.createElement('div');
+      scItem.className='y-sc-item';
+      scItem.textContent=sub;
+      scItem.style.height=scH+'px';
+      scCol.appendChild(scItem);
+
+      // Cells
+      countries.forEach((c,ci)=>{
+        const cell=document.createElement('div');
+        const hasIt=hasCat(c,cat)&&hasSub(c,cat,sub);
+        cell.className='cell sub '+(hasIt?'clear':'redacted');
+        if(si===0) cell.classList.add('group-start');
+        cell.style.transitionDelay=(cellDelay+ci*12)+'ms';
+        grid.appendChild(cell);
+      });
+      cellDelay+=25;
+    });
+  });
+
+  // Make grid area scrollable with sticky x-axis
+  document.getElementById('grid-area').classList.add('scrollable');
+  document.getElementById('x-axis').classList.add('sticky');
+
+  // Animate in
+  requestAnimationFrame(()=>setTimeout(()=>{
+    grid.querySelectorAll('.cell').forEach(c=>c.classList.add('vis'));
+  },50));
+
+  // Update button
+  const diveBtn=document.getElementById('dive-btn');
+  diveBtn.textContent='← Collapse';
+  diveBtn.onclick=collapseGrid;
+}
+
+function collapseGrid(){
+  isExpanded=false;
+  document.getElementById('grid-area').classList.remove('scrollable');
+  document.getElementById('x-axis').classList.remove('sticky');
+  buildCollapsedGrid();
+  document.querySelectorAll('.cell').forEach(c=>c.classList.add('vis'));
+}
+
+// ════════════════════════════════════════
+// COLLECTIVE
+// ════════════════════════════════════════
+const PRIOR_ENTRIES=[
+  {country:'Nigeria',   catOrder:[2,0,4,5,1,3]},
+  {country:'Brazil',    catOrder:[3,2,5,0,4,1]},
+  {country:'Bangladesh',catOrder:[1,3,0,5,2,4]},
+  {country:'Russia',    catOrder:[4,1,3,2,0,5]},
+  {country:'Pakistan',  catOrder:[0,5,2,1,3,4]},
+  {country:'Mexico',    catOrder:[5,3,1,4,0,2]},
+  {country:'Indonesia', catOrder:[2,4,0,3,5,1]},
+  {country:'Nigeria',   catOrder:[1,2,4,0,5,3]},
+  {country:'Brazil',    catOrder:[0,3,5,2,1,4]},
+  {country:'Mexico',    catOrder:[3,0,2,5,4,1]},
+  {country:'Russia',    catOrder:[5,1,0,4,3,2]},
+];
+
+let sessionAdded=false;
+
+function loadCollective(){
+  try{const raw=localStorage.getItem('census_collective');if(raw)return JSON.parse(raw);}catch(e){}
+  saveCollective(PRIOR_ENTRIES);
+  return[...PRIOR_ENTRIES];
+}
+function saveCollective(entries){try{localStorage.setItem('census_collective',JSON.stringify(entries));}catch(e){}}
+
+function viewCollective(){
+  const entries=loadCollective();
+  let withUser=entries;
+  if(!sessionAdded){
+    withUser=[...entries,{country:selectedCountry,catOrder:[...categoryOrder],imageUrl:capturedUrl||null}];
+    saveCollective(withUser);
+    sessionAdded=true;
+  }
+  buildCollectiveScreen(withUser);
+  show('s-collective');
+}
+
+function backFromCollective(){show('s-grid');}
+
+const TILE_CW=16,TILE_CH=12;
+
+function drawTileCells(ctx,entry,tw,th){
+  const countries=[...FIXED,entry.country];
+  entry.catOrder.forEach((catIdx,rowPos)=>{
+    const cat=CATEGORIES[catIdx];
+    countries.forEach((c,colIdx)=>{
+      ctx.fillStyle=hasCat(c,cat)?'rgba(240,240,238,0.28)':'rgba(4,4,4,0.88)';
+      ctx.fillRect(colIdx*TILE_CW,rowPos*TILE_CH,TILE_CW,TILE_CH);
+    });
+  });
+  ctx.strokeStyle='rgba(240,240,238,0.07)';
+  ctx.lineWidth=1;
+  for(let r=1;r<6;r++){ctx.beginPath();ctx.moveTo(0,r*TILE_CH);ctx.lineTo(tw,r*TILE_CH);ctx.stroke();}
+  for(let c=1;c<5;c++){ctx.beginPath();ctx.moveTo(c*TILE_CW,0);ctx.lineTo(c*TILE_CW,th);ctx.stroke();}
+}
+
+function buildCollectiveScreen(entries){
+  document.getElementById('collective-count').textContent=entries.length+' '+(entries.length===1?'participant':'participants');
+  const container=document.getElementById('collective-tiles');
+  container.innerHTML='';
+  const tw=5*TILE_CW, th=6*TILE_CH;
+  entries.forEach((entry,idx)=>{
+    const isYou=idx===entries.length-1&&sessionAdded;
+    const tile=document.createElement('div');
+    tile.className='collective-tile'+(isYou?' is-you':'');
+    const canvas=document.createElement('canvas');
+    canvas.width=tw;canvas.height=th;
+    const ctx=canvas.getContext('2d');
+
+    if(isYou&&entry.imageUrl){
+      // User with photo: draw mesh gradient as placeholder, then overdraw with photo
+      drawMeshGradient(ctx,tw,th,idx%MESH_BLOB_SETS.length);
+      drawTileCells(ctx,entry,tw,th);
+      const img=new Image();
+      img.onload=()=>{
+        ctx.clearRect(0,0,tw,th);
+        ctx.drawImage(img,0,0,tw,th);
+        drawTileCells(ctx,entry,tw,th);
+      };
+      img.src=entry.imageUrl;
+    } else {
+      // Prior entries (and user without photo): mesh gradient background
+      drawMeshGradient(ctx,tw,th,idx%MESH_BLOB_SETS.length);
+      drawTileCells(ctx,entry,tw,th);
+    }
+
+    tile.appendChild(canvas);
+    container.appendChild(tile);
+  });
+}
+
+// ════════════════════════════════════════
+// RESTART
+// ════════════════════════════════════════
+function restart(){
+  capturedUrl=null;selectedCountry=null;categoryOrder=[0,1,2,3,4,5];isExpanded=false;cameraAccessDenied=false;sessionAdded=false;
+  searchInput.value='';nextBtn.disabled=true;
+  document.getElementById('user-chip').textContent='Your Choice';
+  document.getElementById('user-chip').classList.remove('filled');
+  const grid=document.getElementById('grid');
+  Array.from(grid.querySelectorAll('.cell')).forEach(el=>el.remove());
+  grid.className='grid collapsed';grid.style.gridTemplateRows='';
+  document.getElementById('y-axis').innerHTML='<div class="y-spacer"></div>';
+  document.getElementById('x-axis').innerHTML='';
+  document.getElementById('reveal-text').classList.remove('hidden');
+  ['r1','r2','grid-legend','grid-actions'].forEach(id=>document.getElementById(id).classList.remove('vis'));
+  document.getElementById('shutter-btn').style.display='';
+  document.getElementById('cam-error').style.display='none';
+  document.getElementById('cam-info').style.display='block';
+  document.getElementById('grid-img').style.display='none';
+  document.getElementById('grid-placeholder').style.display='block';
+  if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}
+  // Reset interstitial screen state
+  ['il1','il2','il3'].forEach(id=>document.getElementById(id).classList.remove('vis'));
+  const continueBtn=document.getElementById('intro2-continue-btn');
+  continueBtn.style.opacity='0';continueBtn.style.pointerEvents='none';
+  // Reset scrollable/sticky from expanded grid if still active
+  document.getElementById('grid-area').classList.remove('scrollable');
+  document.getElementById('x-axis').classList.remove('sticky');
+  show('s-start');
+}
+</script>
+</body>
+</html>
